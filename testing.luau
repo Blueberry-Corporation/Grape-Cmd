@@ -5,7 +5,7 @@ until game:IsLoaded()
 local Settings = {
 	Prefix = ";",
 	GetPlayerSeperator = ",",
-	Version = "2.0",
+	Version = "1.0",
 	Themes = {
 		--// Gui
 		PrimaryBGColor = Color3.fromRGB(33, 34, 44), -- // default : 25,25,25
@@ -1191,7 +1191,7 @@ Command.Run = function(Arguments)
 					Aliases[caller:lower()][1](unpack(arguments))
 				else
 					UIFuncs.SendNotification(
-						"Nameless Admin",
+						"Grape Admin",
 						"The command <b>" .. tostring(caller) .. "</b> does not exist!",
 						5
 					)
