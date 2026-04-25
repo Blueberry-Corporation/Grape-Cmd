@@ -3820,15 +3820,18 @@ Command.Add(
 )
 
 
-
+--// Save default values
 local DefaultWalkSpeed = 16
 local DefaultJumpPower = 50
 
-
+--// Toggles & stored values
 CommandToggles.LoopWalkSpeed = false
 CommandToggles.LoopJumpPower = false
 local SavedLoopWS = DefaultWalkSpeed
 local SavedLoopJP = DefaultJumpPower
+
+--// Jump fix connections
+local JumpConnections = {}
 
 --// Helper: Get Humanoid safely
 local function GetHumanoid()
@@ -3838,6 +3841,78 @@ local function GetHumanoid()
 	end
 	return nil
 end
+
+--// Helper: Setup Jump Fix (for games with no jump button)
+local function SetupJumpFix()
+	-- Clear old connections
+	for _, conn in pairs(JumpConnections) do
+		conn:Disconnect()
+	end
+	JumpConnections = {}
+	
+	local Character = Services.LocalPlayer.Character
+	if not Character then return end
+	
+	local Humanoid = Character:WaitForChild("Humanoid")
+	
+	-- Method 1: Force JumpState when space pressed even if jump disabled
+	local function ForceJump()
+		if CommandToggles.LoopJumpPower then
+			Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+			-- Bypass PlatformStand games
+			if Humanoid.PlatformStand then
+				Humanoid.PlatformStand = false
+			end
+			-- Extra velocity boost for games that block ChangeState
+			local HRP = Character:FindFirstChild("HumanoidRootPart")
+			if HRP then
+				HRP.Velocity = Vector3.new(HRP.Velocity.X, SavedLoopJP * 0.8, HRP.Velocity.Z)
+			end
+		end
+	end
+	
+	-- Bind to space key
+	table.insert(JumpConnections, Services.UserInputService.InputBegan:Connect(function(Input, GameProcessed)
+		if not GameProcessed and Input.KeyCode == Enum.KeyCode.Space then
+			ForceJump()
+		end
+	end))
+	
+	-- Method 2: Hook Humanoid state to force jump power
+	table.insert(JumpConnections, Humanoid.StateChanged:Connect(function(OldState, NewState)
+		if CommandToggles.LoopJumpPower then
+			-- If game tries to set Freefall/Landed, force back jump power
+			if NewState == Enum.HumanoidStateType.Freefall or NewState == Enum.HumanoidStateType.Landed then
+				Humanoid.JumpPower = SavedLoopJP
+			end
+		end
+	end))
+	
+	-- Method 3: Heartbeat loop for stubborn games
+	table.insert(JumpConnections, Services.RunService.Heartbeat:Connect(function()
+		if CommandToggles.LoopJumpPower and Humanoid then
+			-- Force properties every frame
+			Humanoid.JumpPower = SavedLoopJP
+			Humanoid.UseJumpPower = true -- Ensure using JumpPower not JumpHeight
+			
+			-- Unblock jump if game disabled it
+			if Humanoid.Jump == false and Services.UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+				Humanoid.Jump = true
+			end
+		end
+	end))
+end
+
+--// Re-setup on character respawn
+Services.LocalPlayer.CharacterAdded:Connect(function()
+	wait(0.5) -- Wait for humanoid to load
+	if CommandToggles.LoopJumpPower then
+		SetupJumpFix()
+	end
+	if CommandToggles.LoopWalkSpeed then
+		-- Walkspeed auto-applied by its own loop
+	end
+end)
 
 --// Loop Walkspeed Command
 Command.Add(
@@ -3851,7 +3926,6 @@ Command.Add(
 			return
 		end
 		
-		-- Save the speed user wants
 		SavedLoopWS = SpeedNum
 		CommandToggles.LoopWalkSpeed = false
 		wait(0.1)
@@ -3859,12 +3933,10 @@ Command.Add(
 		
 		UIFuncs.SendNotification("Grape Admin", "Loop walkspeed set to <b>" .. tostring(SpeedNum) .. "</b>", 5)
 		
-		-- Start the loop
 		spawn(function()
 			while CommandToggles.LoopWalkSpeed do
 				local Humanoid = GetHumanoid()
 				if Humanoid then
-					-- Force walkspeed every heartbeat
 					Humanoid.WalkSpeed = SavedLoopWS
 				end
 				Services.RunService.Heartbeat:Wait()
@@ -3882,7 +3954,6 @@ Command.Add(
 		CommandToggles.LoopWalkSpeed = false
 		wait(0.1)
 		
-		-- Reset to default
 		local Humanoid = GetHumanoid()
 		if Humanoid then
 			Humanoid.WalkSpeed = DefaultWalkSpeed
@@ -3892,10 +3963,10 @@ Command.Add(
 	end
 )
 
---// Loop JumpPower Command
+--// Loop JumpPower Command (FIXED - Infinite Jump Style)
 Command.Add(
 	{"LoopJumpPower", "LoopJP", "LJP"},
-	{"LoopJumpPower / LoopJP / LJP", "Loops your jumppower even if you die or the game forces it to change"},
+	{"LoopJumpPower / LoopJP / LJP", "Loops your jumppower with infinite jump bypass for games without jump button"},
 	{"Number"},
 	function(Power)
 		local PowerNum = tonumber(Power)
@@ -3904,21 +3975,23 @@ Command.Add(
 			return
 		end
 		
-		-- Save the power user wants
 		SavedLoopJP = PowerNum
 		CommandToggles.LoopJumpPower = false
 		wait(0.1)
 		CommandToggles.LoopJumpPower = true
 		
-		UIFuncs.SendNotification("Grape Admin", "Loop jumppower set to <b>" .. tostring(PowerNum) .. "</b>", 5)
+		-- Setup jump fix immediately
+		SetupJumpFix()
 		
-		-- Start the loop
+		UIFuncs.SendNotification("Grape Admin", "Loop jumppower set to <b>" .. tostring(PowerNum) .. "</b> (Infinite Jump Active)", 5)
+		
+		-- Main loop for forcing JumpPower
 		spawn(function()
 			while CommandToggles.LoopJumpPower do
 				local Humanoid = GetHumanoid()
 				if Humanoid then
-					-- Force jumppower every heartbeat
 					Humanoid.JumpPower = SavedLoopJP
+					Humanoid.UseJumpPower = true
 				end
 				Services.RunService.Heartbeat:Wait()
 			end
@@ -3935,15 +4008,22 @@ Command.Add(
 		CommandToggles.LoopJumpPower = false
 		wait(0.1)
 		
-		-- Reset to default
+		-- Clear jump fix connections
+		for _, conn in pairs(JumpConnections) do
+			conn:Disconnect()
+		end
+		JumpConnections = {}
+		
 		local Humanoid = GetHumanoid()
 		if Humanoid then
 			Humanoid.JumpPower = DefaultJumpPower
+			Humanoid.UseJumpPower = true
 		end
 		
 		UIFuncs.SendNotification("Grape Admin", "JumpPower reset to default (<b>" .. tostring(DefaultJumpPower) .. "</b>)", 5)
 	end
 )
+
 
 Command.Add(
 	{"Esp"},
@@ -4968,8 +5048,8 @@ if Methods.CheckIfVulnerable() then
 	local BansList = {} -- ban command
 
 	UIFuncs.SendNotification(
-		"Nameless Admin",
-		"Seems like this game has an remote that is vulnerable to attacks using Nameless, you have been given extra commands run <b>cmds</b> and look for commands that have '(Vuln)' next to them, to see what new commands you now have.",
+		"Grape Admin",
+		"Seems like this game has an remote that is vulnerable to attacks using Grape, you have been given extra commands run <b>cmds</b> and look for commands that have '(Vuln)' next to them, to see what new commands you now have.",
 		15
 	)
 
