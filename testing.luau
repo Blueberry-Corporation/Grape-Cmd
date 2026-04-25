@@ -5,7 +5,7 @@ until game:IsLoaded()
 local Settings = {
 	Prefix = ";",
 	GetPlayerSeperator = ",",
-	Version = "1.0",
+	Version = "1.0.6",
 	Themes = {
     --// Gui
     PrimaryBGColor = Color3.fromRGB(30, 27, 46),      -- // Deep grape purple (main background)
@@ -5512,7 +5512,7 @@ Button.MouseButton1Click:Connect(
 )
 --end
 
-UIFuncs.SendNotification("Grape Admin", "Nameless Admin has loaded", 5)
+UIFuncs.SendNotification("Grape Admin", "Grape Admin has loaded", 2)
 
 if gethiddenproperty then
 	if gethiddenproperty(workspace, "RejectCharacterDeletions") == Enum.RejectCharacterDeletions.Disabled then
