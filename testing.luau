@@ -835,7 +835,7 @@ local Button =
 			Position = UDim2.new(0.499, 0, 0.08, 0),
 			Size = UDim2.new(0, 33, 0, 33),
 			BackgroundColor3 = Settings.Themes.PrimaryBGColor,
-			Text = "Grape",
+			Text = "Ga",
 			TextSize = 16,
 			Font = Enum.Font.GothamBold,
 			TextColor3 = Settings.Themes.SecondaryTextColor
@@ -5432,12 +5432,12 @@ Button.MouseButton1Click:Connect(
 )
 --end
 
-UIFuncs.SendNotification("Nameless Admin", "Nameless Admin has loaded", 5)
+UIFuncs.SendNotification("Grape Admin", "Nameless Admin has loaded", 5)
 
 if gethiddenproperty then
 	if gethiddenproperty(workspace, "RejectCharacterDeletions") == Enum.RejectCharacterDeletions.Disabled then
 		UIFuncs.SendNotification(
-			"Nameless Admin",
+			"Grape Admin",
 			"This game has RCD off meaning you can use tool commands. Run ;cmds to see what new commands you now have",
 			7
 		)
@@ -5474,8 +5474,8 @@ wait(0.4)
 Interface.Start:Destroy()
 
 UIFuncs.PopupTrigger(
-	"Nameless Admin",
-	"Seems like you are new here, would you like a tutorial on how to use Nameless?",
+	"Welcome To Grape Admin",
+	"Seems like you are new here, would you like a tutorial on how to use Grape?",
 	function()
 		wait(0.3)
 		UIFuncs.Open(Interface.Introduction, 317, 283, 0.6)
