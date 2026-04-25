@@ -7,22 +7,22 @@ local Settings = {
 	GetPlayerSeperator = ",",
 	Version = "1.0",
 	Themes = {
-		--// Gui
-		PrimaryBGColor = Color3.fromRGB(33, 34, 44), -- // default : 25,25,25
-		TopbarColor = Color3.fromRGB(34, 35, 45), -- // default : 26,26,26
-		PrimaryTextColor = Color3.fromRGB(255, 255, 255), -- // default : 255,255,255
-		SecondaryTextColor = Color3.fromRGB(200, 200, 200), -- // default : 200,200,200
-		ImageColor = Color3.fromRGB(255, 255, 255), -- // default : 255,255,255
-		OutlineColor = Color3.fromRGB(0, 0, 0), -- // border of the uis (basically acts as a shadow) : default : 0, 0, 0
-		OutlineColor2 = Color3.fromRGB(39, 41, 52), -- // outline of stuff in uis (buttons, frames, etc.) : default : 45, 45, 45
-		--// CmdBar
-		CommandLinesColor = Color3.fromRGB(33, 34, 44),
-		CommandCenterBarColor = Color3.fromRGB(33, 34, 44),
-		EdgeColor = Color3.fromRGB(33, 34, 44),
-		AutofillColor = Color3.fromRGB(33, 34, 44),
-		AutofillTextColor = Color3.fromRGB(255, 255, 255),
-		InputTextColor = Color3.fromRGB(255, 255, 255)
-	},
+    --// Gui
+    PrimaryBGColor = Color3.fromRGB(30, 27, 46),      -- // Deep grape purple (main background)
+    TopbarColor = Color3.fromRGB(36, 32, 56),         -- // Slightly lighter purple for topbar
+    PrimaryTextColor = Color3.fromRGB(230, 220, 255), -- // Soft lavender white
+    SecondaryTextColor = Color3.fromRGB(180, 160, 220), -- // Muted grape
+    ImageColor = Color3.fromRGB(200, 180, 240),       -- // Light purple icons
+    OutlineColor = Color3.fromRGB(15, 12, 25),        -- // Dark shadow
+    OutlineColor2 = Color3.fromRGB(60, 50, 90),       -- // Grape outline accent
+    --// CmdBar
+    CommandLinesColor = Color3.fromRGB(40, 35, 60),   -- // Purple-tinted command lines
+    CommandCenterBarColor = Color3.fromRGB(45, 40, 70), -- // Bar background
+    EdgeColor = Color3.fromRGB(50, 45, 75),           -- // Edge highlights
+    AutofillColor = Color3.fromRGB(55, 48, 82),       -- // Autofill bg
+    AutofillTextColor = Color3.fromRGB(220, 200, 255), -- // Bright lavender text
+    InputTextColor = Color3.fromRGB(240, 230, 255)    -- // Almost white input
+},
 	KeyBinds = {},
 	Waypoints = {},
 	Options = {},
@@ -1852,7 +1852,7 @@ Command.Add(
 				end
 			until not CommandToggles.Mute
 		else
-			UIFuncs.SendNotification('Nameless Admin', 'Respect Filtering Enabled is on, so this command wont work.', 5)
+			UIFuncs.SendNotification('Grape Admin', 'Respect Filtering Enabled is on, so this command wont work.', 5)
 		end
 	end
 )
@@ -3657,7 +3657,7 @@ Command.Add(
 	{"UnLoopGrabDeleteTools / UnLoopGDT", "Stops grabbing the dropped tools and deleting them"},
 	{"None"},
 	function()
-		UIFuncs.SendNotification("Nameless Admin", "Stopped grabbing & deleting tools", 5)
+		UIFuncs.SendNotification("Grape Admin", "Stopped grabbing & deleting tools", 5)
 		CommandToggles.LoopGrabDelete = false
 	end
 )
@@ -3681,7 +3681,7 @@ Command.Add(
 	{"LoopGrabTools / LoopGT", "Loop grabs all the dropped tools that are in the game"},
 	{"None"},
 	function()
-		UIFuncs.SendNotification("Nameless Admin", "Started grabbing tools", 5)
+		UIFuncs.SendNotification("Grape Admin", "Started grabbing tools", 5)
 		CommandToggles.LoopGrab = false
 		wait(0.3)
 		CommandToggles.LoopGrab = true
@@ -3701,7 +3701,7 @@ Command.Add(
 	{"UnLoopGrabTools / UnLoopGT", "Stops loop grabbing all the dropped tools that are in the game"},
 	{"None"},
 	function()
-		UIFuncs.SendNotification("Nameless Admin", "Stopped grabbing tools", 5)
+		UIFuncs.SendNotification("Grape Admin", "Stopped grabbing tools", 5)
 		CommandToggles.LoopGrab = false
 	end
 )
@@ -3816,6 +3816,132 @@ Command.Add(
 	{"Number"},
 	function(Number)
 		Services.Character.Humanoid.JumpPower = tonumber(Number)
+	end
+)
+
+
+
+local DefaultWalkSpeed = 16
+local DefaultJumpPower = 50
+
+
+CommandToggles.LoopWalkSpeed = false
+CommandToggles.LoopJumpPower = false
+local SavedLoopWS = DefaultWalkSpeed
+local SavedLoopJP = DefaultJumpPower
+
+--// Helper: Get Humanoid safely
+local function GetHumanoid()
+	local Character = Services.LocalPlayer.Character
+	if Character then
+		return Character:FindFirstChildOfClass("Humanoid")
+	end
+	return nil
+end
+
+--// Loop Walkspeed Command
+Command.Add(
+	{"LoopWalkspeed", "LoopWS", "LWS"},
+	{"LoopWalkspeed / LoopWS / LWS", "Loops your walkspeed even if you die or the game forces it to change"},
+	{"Number"},
+	function(Speed)
+		local SpeedNum = tonumber(Speed)
+		if not SpeedNum then
+			UIFuncs.SendNotification("Grape Admin", "Please provide a valid number for walkspeed", 5)
+			return
+		end
+		
+		-- Save the speed user wants
+		SavedLoopWS = SpeedNum
+		CommandToggles.LoopWalkSpeed = false
+		wait(0.1)
+		CommandToggles.LoopWalkSpeed = true
+		
+		UIFuncs.SendNotification("Grape Admin", "Loop walkspeed set to <b>" .. tostring(SpeedNum) .. "</b>", 5)
+		
+		-- Start the loop
+		spawn(function()
+			while CommandToggles.LoopWalkSpeed do
+				local Humanoid = GetHumanoid()
+				if Humanoid then
+					-- Force walkspeed every heartbeat
+					Humanoid.WalkSpeed = SavedLoopWS
+				end
+				Services.RunService.Heartbeat:Wait()
+			end
+		end)
+	end
+)
+
+--// Unloop Walkspeed Command
+Command.Add(
+	{"UnLoopWalkspeed", "UnLoopWS", "UnLWS"},
+	{"UnLoopWalkspeed / UnLoopWS / UnLWS", "Stops looping walkspeed and resets to default"},
+	{"None"},
+	function()
+		CommandToggles.LoopWalkSpeed = false
+		wait(0.1)
+		
+		-- Reset to default
+		local Humanoid = GetHumanoid()
+		if Humanoid then
+			Humanoid.WalkSpeed = DefaultWalkSpeed
+		end
+		
+		UIFuncs.SendNotification("Grape Admin", "Walkspeed reset to default (<b>" .. tostring(DefaultWalkSpeed) .. "</b>)", 5)
+	end
+)
+
+--// Loop JumpPower Command
+Command.Add(
+	{"LoopJumpPower", "LoopJP", "LJP"},
+	{"LoopJumpPower / LoopJP / LJP", "Loops your jumppower even if you die or the game forces it to change"},
+	{"Number"},
+	function(Power)
+		local PowerNum = tonumber(Power)
+		if not PowerNum then
+			UIFuncs.SendNotification("Grape Admin", "Please provide a valid number for jumppower", 5)
+			return
+		end
+		
+		-- Save the power user wants
+		SavedLoopJP = PowerNum
+		CommandToggles.LoopJumpPower = false
+		wait(0.1)
+		CommandToggles.LoopJumpPower = true
+		
+		UIFuncs.SendNotification("Grape Admin", "Loop jumppower set to <b>" .. tostring(PowerNum) .. "</b>", 5)
+		
+		-- Start the loop
+		spawn(function()
+			while CommandToggles.LoopJumpPower do
+				local Humanoid = GetHumanoid()
+				if Humanoid then
+					-- Force jumppower every heartbeat
+					Humanoid.JumpPower = SavedLoopJP
+				end
+				Services.RunService.Heartbeat:Wait()
+			end
+		end)
+	end
+)
+
+--// Unloop JumpPower Command
+Command.Add(
+	{"UnLoopJumpPower", "UnLoopJP", "UnLJP"},
+	{"UnLoopJumpPower / UnLoopJP / UnLJP", "Stops looping jumppower and resets to default"},
+	{"None"},
+	function()
+		CommandToggles.LoopJumpPower = false
+		wait(0.1)
+		
+		-- Reset to default
+		local Humanoid = GetHumanoid()
+		if Humanoid then
+			Humanoid.JumpPower = DefaultJumpPower
+		end
+		
+		UIFuncs.SendNotification("Grape Admin", "JumpPower reset to default (<b>" .. tostring(DefaultJumpPower) .. "</b>)", 5)
 	end
 )
 
