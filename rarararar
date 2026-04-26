@@ -4523,6 +4523,169 @@ Command.Add(
 )
 
 Command.Add(
+	{"InfIniteJump2", "InfJump2"},
+	{"InfIniteJump2 / InfJump2", "Realistic infinite jump with cooldown like Roblox jump button"},
+	{"None"},
+	function()
+		CommandToggles.InfIniteJump = true
+		local JumpCooldown = false
+		Services.UserInputService.JumpRequest:Connect(function()
+			if not CommandToggles.InfIniteJump then return end
+			if JumpCooldown then return end
+			local Humanoid = Services.Character and Services.Character:FindFirstChildOfClass("Humanoid")
+			if not Humanoid then return end
+			JumpCooldown = true
+			Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+			task.wait(0.2) -- cooldown mirip tombol jump Roblox asli
+			JumpCooldown = false
+		end)
+		UIFuncs.SendNotification("Grape Admin", "InfJump enabled. Use ;uninfjump to stop.", 5)
+	end
+)
+
+SitFly = false,
+SitFlyRSConn = nil,
+SitFlyCharConn = nil,
+Command.Add(
+	{"SitFly", "SF"},
+	{"SitFly / SF", "Fly while sitting using Slicer X method"},
+	{"None"},
+	function()
+		if CommandToggles.SitFly then
+			UIFuncs.SendNotification("Grape Admin", "SitFly already active. Use ;unsitfly to stop.", 4)
+			return
+		end
+		CommandToggles.SitFly = true
+
+		local function createSitFly(root, char)
+			if not root then return end
+
+			-- Cleanup dulu kalo ada sisa
+			for _, v in ipairs(root:GetChildren()) do
+				if v.Name == "SFVelocity" or v.Name == "SFAlign" or v.Name == "SFAttachment" then
+					v:Destroy()
+				end
+			end
+
+			local att = Instance.new("Attachment")
+			att.Name = "SFAttachment"
+			att.Parent = root
+
+			local lv = Instance.new("LinearVelocity")
+			lv.Name = "SFVelocity"
+			lv.Attachment0 = att
+			lv.MaxForce = math.huge
+			lv.VectorVelocity = Vector3.new(0, 0, 0)
+			lv.RelativeTo = Enum.ActuatorRelativeTo.World
+			lv.Parent = root
+
+			local ao = Instance.new("AlignOrientation")
+			ao.Name = "SFAlign"
+			ao.Attachment0 = att
+			ao.Mode = Enum.OrientationAlignmentMode.OneAttachment
+			ao.MaxTorque = math.huge
+			ao.Responsiveness = 20
+			ao.Parent = root
+
+			local hum = char:FindFirstChildWhichIsA("Humanoid")
+			if hum then
+				hum.PlatformStand = false
+				hum.Sit = true
+			end
+		end
+
+		local controlModule = require(
+			Services.LocalPlayer.PlayerScripts:WaitForChild("PlayerModule"):WaitForChild("ControlModule")
+		)
+
+		createSitFly(
+			Services.Character and Services.Character:FindFirstChild("HumanoidRootPart"),
+			Services.Character
+		)
+
+		-- Re-apply on respawn
+		CommandToggles.SitFlyCharConn = Services.LocalPlayer.CharacterAdded:Connect(function(char)
+			task.wait(0.15)
+			if CommandToggles.SitFly then
+				createSitFly(char:FindFirstChild("HumanoidRootPart"), char)
+			end
+		end)
+
+		-- RenderStepped loop
+		CommandToggles.SitFlyRSConn = Services.RunService.RenderStepped:Connect(function()
+			if not CommandToggles.SitFly then return end
+			local root = Services.Character and Services.Character:FindFirstChild("HumanoidRootPart")
+			if not root then return end
+
+			local lv = root:FindFirstChild("SFVelocity")
+			local ao = root:FindFirstChild("SFAlign")
+			local hum = Services.Character:FindFirstChildWhichIsA("Humanoid")
+
+			if lv and ao and hum then
+				-- Paksa sit terus biar ga bangun sendiri
+				if not hum.Sit then hum.Sit = true end
+
+				ao.CFrame = Services.Camera.CFrame
+
+				local dir = controlModule:GetMoveVector()
+				local move = (Services.Camera.CFrame.RightVector * dir.X)
+					+ (Services.Camera.CFrame.LookVector * -dir.Z)
+
+				-- Space naik, LeftShift turun
+				local uis = Services.UserInputService
+				if uis:IsKeyDown(Enum.KeyCode.Space) then
+					move = move + Vector3.new(0, 1, 0)
+				elseif uis:IsKeyDown(Enum.KeyCode.LeftShift) then
+					move = move + Vector3.new(0, -1, 0)
+				end
+
+				if move.Magnitude > 0 then move = move.Unit end
+				lv.VectorVelocity = move * (50) -- speed default 50, bisa diubah
+			end
+		end)
+
+		UIFuncs.SendNotification("Grape Admin", "SitFly enabled. Use ;unsitfly to stop.", 5)
+	end
+)
+
+Command.Add(
+	{"UnSitFly", "UnSF"},
+	{"UnSitFly / UnSF", "Stops SitFly"},
+	{"None"},
+	function()
+		CommandToggles.SitFly = false
+
+		if CommandToggles.SitFlyRSConn then
+			CommandToggles.SitFlyRSConn:Disconnect()
+			CommandToggles.SitFlyRSConn = nil
+		end
+		if CommandToggles.SitFlyCharConn then
+			CommandToggles.SitFlyCharConn:Disconnect()
+			CommandToggles.SitFlyCharConn = nil
+		end
+
+		-- Cleanup instances
+		local root = Services.Character and Services.Character:FindFirstChild("HumanoidRootPart")
+		if root then
+			for _, v in ipairs(root:GetChildren()) do
+				if v.Name == "SFVelocity" or v.Name == "SFAlign" or v.Name == "SFAttachment" then
+					v:Destroy()
+				end
+			end
+		end
+
+		local hum = Services.Character and Services.Character:FindFirstChildWhichIsA("Humanoid")
+		if hum then
+			hum.Sit = false
+			hum.PlatformStand = false
+		end
+
+		UIFuncs.SendNotification("Grape Admin", "SitFly stopped.", 5)
+	end
+)
+
+
+Command.Add(
 	{"Servers"},
 	{"Servers", "See what other servers there are and join them"},
 	{"None"},
