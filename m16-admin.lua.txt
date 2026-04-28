@@ -161,7 +161,7 @@ end, function()
 	Screen.Parent = (Local.Player.PlayerGui);
 end)
 
--- Cmd [FUNCTIONS]
+-- M16 Admin [FUNCTIONS]
 local Lower = string.lower;
 local Split = string.split;
 local Sub = string.sub;
@@ -2999,12 +2999,12 @@ Command.Add({
 			local MainTab = Tabs.Main.Scroll
 
 			-- Tabs
-			local Information = Library.new("Switch", { Title = "Information", Description = "Get info about Cmd", Parent = MainTab })
+			local Information = Library.new("Switch", { Title = "Information", Description = "Get info about M16 Admin", Parent = MainTab })
 			local EventSwitch = Library.new("Switch", { Title = "Events", Description = "Run commands whenever something happens", Parent = MainTab })
 			local Aliases = Library.new("Switch", { Title = "Aliases", Description = "Add custom aliases (nicknames) for commands!", Parent = MainTab })
-			local Toggles = Library.new("Switch", { Title = "Toggles", Description = "Enable or Disable certain Cmd options", Parent = MainTab })	
-			local Themes = Library.new("Switch", { Title = "Themes", Description = "Modify the appearance of Cmd", Parent = MainTab })	
-			local Default = Library.new("Switch", { Title = "Default Themes", Description = "Default Themes on Cmd", Parent = Themes })
+			local Toggles = Library.new("Switch", { Title = "Toggles", Description = "Enable or Disable certain M16 Admin options", Parent = MainTab })	
+			local Themes = Library.new("Switch", { Title = "Themes", Description = "Modify the appearance of M16 Admin", Parent = MainTab })	
+			local Default = Library.new("Switch", { Title = "Default Themes", Description = "Default Themes for M16 Admin", Parent = Themes })
 			local Custom = Library.new("Switch", { Title = "Custom", Description = "Make your own custom theme", Parent = Themes })
 
 			-- Information
@@ -3085,7 +3085,7 @@ Command.Add({
 				})
 			end
 
-			AddEventBindButton("Executed", "Runs a command as soon as Cmd is executed");
+			AddEventBindButton("Executed", "Runs a command as soon as M16 Admin is executed");
 			AddEventBindButton("Chat", "Runs a command as soon as you chat something");
 			AddEventBindButton("Respawn", "Runs a command as soon as your character respawns");
 			AddEventBindButton("Died", "Runs a command as soon as your character dies");
@@ -3319,7 +3319,7 @@ Command.Add({
 			})
 
 			local ThemeDescriptions = {
-				["Primary"] = "Changes the background color of Cmd", ["Secondary"] = "Changes the secondary color of Cmd (buttons, topbar, etc.)", ["Title"] = "Changes the Text Color of the Titles", ["Description"] = "Changes the Text Color of descriptions", ["Icon"] = "Changes the color of all icons", ["Shadow"] = "Changes the color of the outlines around Tabs, etc.", ["Outline"] = "Changes the color of outlines inside of Tabs, etc."
+				["Primary"] = "Changes the background color of M16 Admin", ["Secondary"] = "Changes the secondary color of M16 Admin (buttons, topbar, etc.)", ["Title"] = "Changes the Text Color of the Titles", ["Description"] = "Changes the Text Color of descriptions", ["Icon"] = "Changes the color of all icons", ["Shadow"] = "Changes the color of the outlines around Tabs, etc.", ["Outline"] = "Changes the color of outlines inside of Tabs, etc."
 			}
 
 			for Index, Theme in next, Settings.Themes do
@@ -3988,7 +3988,7 @@ Command.Add({
 
 Command.Add({
 	Aliases = { "logs" },
-	Description = "Shows all the stuff Cmd has logged (Http, Joins, Leaves, etc.)",
+	Description = "Shows all the stuff M16 Admin has logged (Http, Joins, Leaves, etc.)",
 	Arguments = {},
 	Plugin = false,
 	Task = function()
@@ -4103,7 +4103,7 @@ Command.Add({
 				Description = "Saves everything that is logged in your exploit's workspace folder",
 				Parent = MainTab,
 				Callback = function()
-					local Logged = Format("Cmd LOGS\nPLACE ID - %s\nTIME - %s", game.PlaceId, os.date())
+					local Logged = Format("M16 ADMIN LOGS\nPLACE ID - %s\nTIME - %s", game.PlaceId, os.date())
 
 					local Each = function(Tab, Name)
 						Logged = Logged .. "\n\n" .. string.upper(Name)
@@ -4134,7 +4134,7 @@ Command.Add({
 
 Command.Add({
 	Aliases = { "notify", "send", "notification" },
-	Description = "Send a notification using Cmd's Utility System",
+	Description = "Send a notification using M16 Admin's Utility System",
 	Arguments = { 
 		{ Name = "Mode", Type = "String" },
 		{ Name = "Title", Type = "String" },
@@ -4463,7 +4463,7 @@ Command.Add({
 
 Command.Add({
 	Aliases = { "admin" },
-	Description = "Give the target access to use Cmd's commands",
+	Description = "Give the target access to use M16 Admin commands",
 	Arguments = {
 		{ Name = "Target", Type = "Player" }
 	},
@@ -4804,10 +4804,10 @@ Command.Add({
 			local Part = Local.Mouse.Target
 			local Attachment, Position, Orientation, Attachment2 = Instance.new("Attachment"), Instance.new("AlignPosition"), Instance.new("AlignOrientation"), Instance.new("Attachment")
 			
-			Attachment.Name = "Cmd"
-			Position.Name = "Cmd"
-			Orientation.Name = "Cmd"
-			Attachment2.Name = "Cmd"
+			Attachment.Name = "M16"
+			Position.Name = "M16"
+			Orientation.Name = "M16"
+			Attachment2.Name = "M16"
 
 			if Env().AttachParts and Part and not Part.Anchored then
 				local Char = Local.Character;
@@ -4853,10 +4853,10 @@ Command.Add({
 				local Char = Local.Character;
 				local LocalRoot = Char.HumanoidRootPart;
 				
-				Attachment.Name = "Cmd"
-				Position.Name = "Cmd"
-				Orientation.Name = "Cmd"
-				Attachment2.Name = "Cmd"
+				Attachment.Name = "M16"
+				Position.Name = "M16"
+				Orientation.Name = "M16"
+				Attachment2.Name = "M16"
 
 				if LocalRoot then
                     Part.CanCollide = false
@@ -4893,7 +4893,7 @@ Command.Add({
 		for Index, Part in next, workspace:GetDescendants() do
 			if Part and Part:IsA("BasePart") and not Part.Anchored then
 				for Index, Child in next, Part:GetChildren() do
-					if Child.Name == "Cmd" and Discover(Classes, Child.ClassName) then
+					if Child.Name == "M16" and Discover(Classes, Child.ClassName) then
 						Child:Destroy() 
 					end
 				end
@@ -4944,10 +4944,10 @@ Command.Add({
 					local Attachment, Position, Orientation, Attachment2 = Instance.new("Attachment"), Instance.new("AlignPosition"), Instance.new("AlignOrientation"), Instance.new("Attachment")
 					local Char = Local.Character;
 					
-					Attachment.Name = "Cmd"
-					Position.Name = "Cmd"
-					Orientation.Name = "Cmd"
-					Attachment2.Name = "Cmd"
+					Attachment.Name = "M16"
+					Position.Name = "M16"
+					Orientation.Name = "M16"
+					Attachment2.Name = "M16"
 
                     Part.CanCollide = false
 
@@ -5124,10 +5124,10 @@ Command.Add({
 			local Npc = Local.Mouse.Target.Parent
 			local Attachment, Position, Orientation, Attachment2 = Instance.new("Attachment"), Instance.new("AlignPosition"), Instance.new("AlignOrientation"), Instance.new("Attachment")
 
-			Attachment.Name = "Cmd"
-			Position.Name = "Cmd"
-			Orientation.Name = "Cmd"
-			Attachment2.Name = "Cmd"
+			Attachment.Name = "M16"
+			Position.Name = "M16"
+			Orientation.Name = "M16"
+			Attachment2.Name = "M16"
 
 			if Env().ControlNpc and Npc and Npc:FindFirstChildOfClass("Humanoid") and not Services.Players:GetPlayerFromCharacter(Npc) then
 				local Root = Npc:FindFirstChild("HumanoidRootPart");
@@ -5371,7 +5371,7 @@ Command.Add({
 
 Command.Add({
 	Aliases = { "reload" },
-	Description = "Reloads Cmd",
+	Description = "Reloads M16 Admin",
 	Arguments = {},
 	Plugin = false,
 	Task = function()
@@ -5385,7 +5385,7 @@ Command.Add({
 
 Command.Add({
 	Aliases = { "removecmd" },
-	Description = "Removes Cmd",
+	Description = "Removes M16 Admin",
 	Arguments = {},
 	Plugin = false,
 	Task = function()
@@ -5530,7 +5530,7 @@ Command.Add({
 
 Command.Add({
 	Aliases = { "rejoinreload" },
-	Description = "Rejoins and reruns Cmd",
+	Description = "Rejoins and reruns M16 Admin",
 	Arguments = {},
 	Plugin = false,
 	Task = function()
@@ -8555,28 +8555,150 @@ Connect(PropertyChanged(Screen, "Parent"), function()
 end)
 
 do
-	local Functional = function() 
-		Open.Visible = true
-		Library.Drag(Open);
-		Library.Hover(Open);
+	-- M16 Admin: Create custom squircle open button (always visible, draggable)
+	local M16Button = nil
 
-		Connect(Open.Title.MouseButton1Click, function()
-			Library.Bar(true);
-			Wait();
-			Box.Text = Blank;
-			Box:CaptureFocus();
+	local CreateM16Button = function()
+		-- Remove old open button if exists
+		pcall(function() Open.Visible = false end)
+
+		local Gui = Instance.new("ScreenGui")
+		Gui.Name = "M16AdminButton"
+		Gui.ResetOnSpawn = false
+		Gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+		Gui.DisplayOrder = 999
+
+		xpcall(function()
+			Gui.Parent = game:GetService("CoreGui")
+		end, function()
+			Gui.Parent = Local.Player.PlayerGui
 		end)
+
+		-- Squircle outer frame (UICorner with high CornerRadius = squircle look)
+		local Btn = Instance.new("TextButton")
+		Btn.Name = "M16OpenBtn"
+		Btn.Size = UDim2.fromOffset(54, 54)
+		Btn.Position = UDim2.new(0, 16, 0.5, -27)
+		Btn.AnchorPoint = Vector2.new(0, 0)
+		Btn.BackgroundColor3 = Color3.fromRGB(8, 8, 8)
+		Btn.BorderSizePixel = 0
+		Btn.Text = ""
+		Btn.AutoButtonColor = false
+		Btn.Parent = Gui
+
+		-- Squircle corner radius
+		local Corner = Instance.new("UICorner")
+		Corner.CornerRadius = UDim.new(0, 14)
+		Corner.Parent = Btn
+
+		-- Stroke (white border)
+		local Stroke = Instance.new("UIStroke")
+		Stroke.Color = Color3.fromRGB(60, 60, 60)
+		Stroke.Thickness = 1.5
+		Stroke.Parent = Btn
+
+		-- "M16" Text label
+		local Label = Instance.new("TextLabel")
+		Label.Name = "M16Label"
+		Label.Size = UDim2.fromScale(1, 0.55)
+		Label.Position = UDim2.fromScale(0, 0.12)
+		Label.BackgroundTransparency = 1
+		Label.Text = "M16"
+		Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+		Label.Font = Enum.Font.GothamBold
+		Label.TextSize = 13
+		Label.Parent = Btn
+
+		-- "ADMIN" subtext
+		local Sub = Instance.new("TextLabel")
+		Sub.Name = "SubLabel"
+		Sub.Size = UDim2.fromScale(1, 0.35)
+		Sub.Position = UDim2.fromScale(0, 0.64)
+		Sub.BackgroundTransparency = 1
+		Sub.Text = "ADMIN"
+		Sub.TextColor3 = Color3.fromRGB(160, 160, 160)
+		Sub.Font = Enum.Font.GothamMedium
+		Sub.TextSize = 8
+		Sub.Parent = Btn
+
+		-- Hover effect
+		Connect(Btn.MouseEnter, function()
+			Services.Tween:Create(Btn, TweenInfo.new(0.2), {
+				BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+			}):Play()
+			Services.Tween:Create(Stroke, TweenInfo.new(0.2), {
+				Color = Color3.fromRGB(120, 120, 120)
+			}):Play()
+		end)
+
+		Connect(Btn.MouseLeave, function()
+			Services.Tween:Create(Btn, TweenInfo.new(0.2), {
+				BackgroundColor3 = Color3.fromRGB(8, 8, 8)
+			}):Play()
+			Services.Tween:Create(Stroke, TweenInfo.new(0.2), {
+				Color = Color3.fromRGB(60, 60, 60)
+			}):Play()
+		end)
+
+		-- Click to open cmdbar
+		Connect(Btn.MouseButton1Click, function()
+			Library.Bar(true)
+			Wait()
+			Box.Text = Blank
+			Box:CaptureFocus()
+		end)
+
+		-- Draggable
+		local Dragging, DragStart, StartPos = false, nil, nil
+
+		Connect(Btn.InputBegan, function(Input)
+			if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+				Dragging = true
+				DragStart = Input.Position
+				StartPos = Btn.Position
+
+				Connect(Input.Changed, function()
+					if Input.UserInputState == Enum.UserInputState.End then
+						Dragging = false
+					end
+				end)
+			end
+		end)
+
+		Connect(Services.Input.InputChanged, function(Input)
+			if Dragging and (Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch) then
+				local Delta = Input.Position - DragStart
+				Btn.Position = UDim2.new(
+					StartPos.X.Scale,
+					StartPos.X.Offset + Delta.X,
+					StartPos.Y.Scale,
+					StartPos.Y.Offset + Delta.Y
+				)
+			end
+		end)
+
+		M16Button = Btn
+		return Gui
 	end
 
-	xpcall(function()
-		if Discover( { Enum.Platform.Android, Enum.Platform.Android }, Services.Input:GetPlatform()) then
-			Functional()
-		end
+	local Functional = function() 
+		CreateM16Button()
+	end
 
-	end, function() 
-		if Services.Run:IsStudio() then
-			Functional()
-		end
+	-- Always show the button (not just on mobile/studio)
+	xpcall(function()
+		Functional()
+	end, function(err)
+		warn("[M16 Admin] Button creation error: " .. tostring(err))
+		-- Fallback: use original Open button
+		Open.Visible = true
+		Library.Drag(Open)
+		Connect(Open.Title.MouseButton1Click, function()
+			Library.Bar(true)
+			Wait()
+			Box.Text = Blank
+			Box:CaptureFocus()
+		end)
 	end)
 
 	Genv().M16Loaded = true;
@@ -8616,6 +8738,34 @@ end
 
 Autofills.Search(Blank);
 Library.LoadTheme(Settings.Themes);
+
+-- M16 Admin: Rename any visible "Cmd" text on the cmdbar UI elements
+pcall(function()
+	-- Set bar placeholder / title text to M16 Admin
+	if Bar:FindFirstChild("Title") then
+		Bar.Title.Text = "M16 Admin"
+	end
+	if Box then
+		Box.PlaceholderText = "M16 Admin — type a command..."
+	end
+	if Open:FindFirstChild("Title") then
+		Open.Title.Text = "M16"
+	end
+	-- Rename any TextLabel inside Bar that says Cmd
+	for _, v in next, Bar:GetDescendants() do
+		if v:IsA("TextLabel") or v:IsA("TextButton") then
+			if v.Text == "Cmd" or v.Text == "cmd" then
+				v.Text = "M16"
+			end
+		end
+	end
+	-- Also check Screen.Open
+	for _, v in next, Open:GetDescendants() do
+		if (v:IsA("TextLabel") or v:IsA("TextButton")) and (v.Text == "Cmd" or v.Text == "cmd") then
+			v.Text = "M16"
+		end
+	end
+end)
 
 Utils.Notify("Success", "M16 Admin", "Welcome! M16 Admin is ready. Use your prefix to open the command bar.", 8);
 Utils.Notify("Success", "M16 Admin", Format("Loaded in %.2f seconds! Type your prefix to begin.", tick() - LoadTime), 6);
