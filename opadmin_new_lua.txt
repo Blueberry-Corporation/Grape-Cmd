@@ -830,6 +830,292 @@ local function get_move_vector(speed)
 	end
 end
 
+-- squircle + gradient styling helpers (defined early so notify() and UI setup can both use them)
+local GRADIENT_ROTATION = 120
+local GRADIENT_COLORS = {
+	Color3.fromRGB(88, 101, 242),   -- soft indigo
+	Color3.fromRGB(140, 100, 245),  -- soft violet
+	Color3.fromRGB(90, 170, 250),   -- soft sky blue
+}
+
+local function apply_squircle(element, radius)
+	local corner = element:FindFirstChildOfClass('UICorner')
+	if not corner then
+		corner = Instance.new('UICorner')
+		corner.Parent = element
+	end
+	corner.CornerRadius = UDim.new(0, radius or 20)
+	return corner
+end
+
+local function apply_gradient(element, rotation, transparency_keypoints)
+	local gradient = element:FindFirstChildOfClass('UIGradient')
+	if not gradient then
+		gradient = Instance.new('UIGradient')
+		gradient.Parent = element
+	end
+
+	local seq = {}
+	for i, c in GRADIENT_COLORS do
+		table.insert(seq, ColorSequenceKeypoint.new((i - 1) / (#GRADIENT_COLORS - 1), c))
+	end
+
+	gradient.Color = ColorSequence.new(seq)
+	gradient.Rotation = rotation or GRADIENT_ROTATION
+
+	if transparency_keypoints then
+		gradient.Transparency = transparency_keypoints
+	end
+
+	return gradient
+end
+
+local function apply_smooth_stroke(element, color, thickness, transparency)
+	local stroke = element:FindFirstChildOfClass('UIStroke')
+	if not stroke then
+		stroke = Instance.new('UIStroke')
+		stroke.Parent = element
+	end
+	stroke.Color = color or Color3.fromRGB(255, 255, 255)
+	stroke.Thickness = thickness or 1
+	stroke.Transparency = transparency or 0.7
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	return stroke
+end
+
+-- creates a small floating draggable toggle widget (mobile-friendly), with an ON/OFF
+-- switch and a small X button to remove the widget entirely.
+-- on_toggle(new_state) is called when the switch is tapped.
+-- returns a table: { gui = ScreenGui, set_state(bool), destroy() }
+stuff.active_toggle_guis = stuff.active_toggle_guis or {}
+
+local function create_mobile_toggle_gui(title, initial_state, on_toggle, y_offset)
+	-- stack multiple toggles vertically so they don't overlap
+	y_offset = y_offset or (#stuff.active_toggle_guis * 50)
+
+	local screen_gui = Instance.new('ScreenGui')
+	screen_gui.Name = 'toggle_' .. title:gsub('%s', '_')
+	screen_gui.ResetOnSpawn = false
+	screen_gui.IgnoreGuiInset = true
+	screen_gui.DisplayOrder = 999
+
+	-- smaller footprint so it doesn't cover much of the screen
+	local container = Instance.new('Frame')
+	container.Name = 'container'
+	container.Size = UDim2.new(0, 140, 0, 40)
+	container.Position = UDim2.new(0, 12, 0.28, y_offset)
+	container.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
+	container.BackgroundTransparency = 0.05
+	container.BorderSizePixel = 0
+	container.Active = true
+	container.Parent = screen_gui
+
+	apply_squircle(container, 16)
+	apply_gradient(container, 120, NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.6),
+		NumberSequenceKeypoint.new(1, 0.6),
+	}))
+	apply_smooth_stroke(container, Color3.fromRGB(255, 255, 255), 1, 0.7)
+
+	local scale = Instance.new('UIScale')
+	scale.Scale = 0.85
+	scale.Parent = container
+
+	-- title label
+	local label = Instance.new('TextLabel')
+	label.Name = 'label'
+	label.BackgroundTransparency = 1
+	label.Position = UDim2.new(0, 10, 0, 0)
+	label.Size = UDim2.new(1, -56, 1, 0)
+	label.Font = Enum.Font.GothamMedium
+	label.TextSize = 12
+	label.TextColor3 = Color3.fromRGB(255, 255, 255)
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.Text = title
+	label.TextTruncate = Enum.TextTruncate.AtEnd
+	label.Active = false -- so drag input passes through to container
+	label.Parent = container
+
+	-- ON/OFF switch (pill)
+	local switch_track = Instance.new('TextButton')
+	switch_track.Name = 'switch'
+	switch_track.AnchorPoint = Vector2.new(1, 0.5)
+	switch_track.Position = UDim2.new(1, -26, 0.5, 0)
+	switch_track.Size = UDim2.new(0, 34, 0, 18)
+	switch_track.BackgroundColor3 = initial_state and Color3.fromRGB(120, 220, 170) or Color3.fromRGB(90, 90, 100)
+	switch_track.BackgroundTransparency = 0.1
+	switch_track.BorderSizePixel = 0
+	switch_track.Text = ''
+	switch_track.AutoButtonColor = false
+	switch_track.ZIndex = 5
+	switch_track.Parent = container
+	apply_squircle(switch_track, 999)
+
+	local switch_knob = Instance.new('Frame')
+	switch_knob.Name = 'knob'
+	switch_knob.Size = UDim2.new(0, 14, 0, 14)
+	switch_knob.Position = initial_state and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7)
+	switch_knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	switch_knob.BorderSizePixel = 0
+	switch_knob.ZIndex = 6
+	switch_knob.Parent = switch_track
+	apply_squircle(switch_knob, 999)
+
+	-- X close button
+	local close_btn = Instance.new('TextButton')
+	close_btn.Name = 'close'
+	close_btn.AnchorPoint = Vector2.new(1, 0.5)
+	close_btn.Position = UDim2.new(1, -4, 0.5, 0)
+	close_btn.Size = UDim2.new(0, 18, 0, 18)
+	close_btn.BackgroundColor3 = Color3.fromRGB(227, 112, 144)
+	close_btn.BackgroundTransparency = 0.2
+	close_btn.BorderSizePixel = 0
+	close_btn.Font = Enum.Font.GothamBold
+	close_btn.TextSize = 11
+	close_btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	close_btn.Text = 'X'
+	close_btn.ZIndex = 5
+	close_btn.Parent = container
+	apply_squircle(close_btn, 999)
+
+	protect_gui(screen_gui)
+
+	-- entrance animation (scale + fade)
+	container.BackgroundTransparency = 1
+	label.TextTransparency = 1
+	switch_track.BackgroundTransparency = 1
+	close_btn.BackgroundTransparency = 1
+	services.tween_service:Create(scale, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
+	services.tween_service:Create(container, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {BackgroundTransparency = 0.05}):Play()
+	services.tween_service:Create(label, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
+	services.tween_service:Create(switch_track, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {BackgroundTransparency = 0.1}):Play()
+	services.tween_service:Create(close_btn, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {BackgroundTransparency = 0.2}):Play()
+
+	local state = initial_state
+	local destroyed = false
+
+	local function set_state(new_state)
+		state = new_state
+		services.tween_service:Create(switch_track, TweenInfo.new(0.15, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+			BackgroundColor3 = state and Color3.fromRGB(120, 220, 170) or Color3.fromRGB(90, 90, 100)
+		}):Play()
+		services.tween_service:Create(switch_knob, TweenInfo.new(0.15, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+			Position = state and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7)
+		}):Play()
+	end
+
+	local widget
+
+	local function destroy()
+		if destroyed then return end
+		destroyed = true
+
+		for i, w in stuff.active_toggle_guis do
+			if w == widget then
+				table.remove(stuff.active_toggle_guis, i)
+				break
+			end
+		end
+
+		pcall(function()
+			services.tween_service:Create(scale, TweenInfo.new(0.15, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {Scale = 0.85}):Play()
+			local fade = services.tween_service:Create(container, TweenInfo.new(0.15, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {BackgroundTransparency = 1})
+			fade:Play()
+			fade.Completed:Connect(function()
+				screen_gui:Destroy()
+			end)
+		end)
+
+		-- hard-destroy fallback in case the tween/Completed event never fires
+		task.delay(0.3, function()
+			if screen_gui and screen_gui.Parent then
+				screen_gui:Destroy()
+			end
+		end)
+	end
+
+	switch_track.MouseButton1Click:Connect(function()
+		local new_state = not state
+		set_state(new_state)
+		local ok, err = pcall(on_toggle, new_state)
+		if not ok then
+			warn('toggle gui error: ' .. tostring(err))
+		end
+
+		-- turning the switch OFF removes the widget automatically
+		if not new_state then
+			task.delay(0.15, function()
+				destroy()
+			end)
+		end
+	end)
+
+	close_btn.MouseButton1Click:Connect(function()
+		-- X always closes the widget; if still ON, turn the feature off first
+		if state then
+			local ok, err = pcall(on_toggle, false)
+			if not ok then
+				warn('toggle gui error: ' .. tostring(err))
+			end
+		end
+		destroy()
+	end)
+
+	-- draggable (PC mouse + mobile touch)
+	do
+		local dragging = false
+		local drag_input = nil
+		local drag_start = nil
+		local start_pos = nil
+
+		container.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1
+				or input.UserInputType == Enum.UserInputType.Touch then
+
+				dragging = true
+				drag_start = input.Position
+				start_pos = container.Position
+
+				input.Changed:Connect(function()
+					if input.UserInputState == Enum.UserInputState.End then
+						if drag_input == input then
+							dragging = false
+						end
+					end
+				end)
+			end
+		end)
+
+		container.InputChanged:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseMovement
+				or input.UserInputType == Enum.UserInputType.Touch then
+				drag_input = input
+			end
+		end)
+
+		services.user_input_service.InputChanged:Connect(function(input)
+			if dragging and input == drag_input then
+				local delta = input.Position - drag_start
+				container.Position = UDim2.new(
+					start_pos.X.Scale, start_pos.X.Offset + delta.X,
+					start_pos.Y.Scale, start_pos.Y.Offset + delta.Y
+				)
+			end
+		end)
+	end
+
+	screen_gui.Parent = stuff.owner:FindFirstChildOfClass('PlayerGui') or services.core_gui
+
+	widget = {
+		gui = screen_gui,
+		set_state = set_state,
+		destroy = destroy,
+	}
+
+	table.insert(stuff.active_toggle_guis, widget)
+	return widget
+end
+
 local function remove_notification(notification_data)
 	if notification_data.removing then return end
 	notification_data.removing = true
@@ -872,16 +1158,80 @@ local function notify(log, text, log_type)
 		[4] = Color3.fromRGB(127, 212, 244), -- info
 	}
 
-	text_label.TextColor3 = colors[log_type] or colors[1]
+	-- two-tone gradient pair per notification type, used for a subtle animated shimmer
+	local gradient_pairs = {
+		[1] = {Color3.fromRGB(120, 220, 170), Color3.fromRGB(80, 190, 255)},  -- success: green -> blue
+		[2] = {Color3.fromRGB(255, 90, 110), Color3.fromRGB(200, 60, 200)},   -- error: red -> magenta
+		[3] = {Color3.fromRGB(255, 190, 90), Color3.fromRGB(255, 120, 90)},   -- warning: amber -> orange
+		[4] = {Color3.fromRGB(90, 180, 255), Color3.fromRGB(140, 120, 255)},  -- info: blue -> violet
+	}
+
+	text_label.TextColor3 = Color3.fromRGB(255, 255, 255)
+	text_label.TextStrokeTransparency = 0.5
+	text_label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
 	text_label.Text = ` [{tostring(log) or '?'}] {text} `
+	text_label.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
 	text_label.BackgroundTransparency = 1
 	text_label.TextTransparency = 1
 	text_label.Position = text_label.Position - UDim2.new(0.1, 0, 0, 0)
 
+	-- squircle shape
+	apply_squircle(text_label, 14)
+	apply_smooth_stroke(text_label, colors[log_type] or colors[1], 1, 0.6)
+
+	-- animated gradient tint over the dark base (kept subtle so white text stays readable)
+	local pair = gradient_pairs[log_type] or gradient_pairs[1]
+	local gradient = apply_gradient(text_label, 110)
+	gradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, pair[1]),
+		ColorSequenceKeypoint.new(1, pair[2]),
+	})
+	gradient.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.65),
+		NumberSequenceKeypoint.new(1, 0.65),
+	})
+
+	task.spawn(function()
+		local t = 0
+		while text_label.Parent do
+			t += task.wait(0.05)
+			gradient.Rotation = 110 + math.sin(t * 1.5) * 30
+		end
+	end)
+
+	-- thin countdown progress bar along the bottom edge
+	local NOTIF_DURATION = 4
+
+	local bar_track = Instance.new('Frame')
+	bar_track.Name = 'progress_track'
+	bar_track.AnchorPoint = Vector2.new(0, 1)
+	bar_track.Position = UDim2.new(0, 0, 1, 0)
+	bar_track.Size = UDim2.new(1, 0, 0, 3)
+	bar_track.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	bar_track.BackgroundTransparency = 0.85
+	bar_track.BorderSizePixel = 0
+	bar_track.ZIndex = text_label.ZIndex + 1
+	bar_track.Parent = text_label
+	apply_squircle(bar_track, 999)
+
+	local bar_fill = Instance.new('Frame')
+	bar_fill.Name = 'progress_fill'
+	bar_fill.Size = UDim2.new(1, 0, 1, 0)
+	bar_fill.BackgroundColor3 = colors[log_type] or colors[1]
+	bar_fill.BackgroundTransparency = 0.1
+	bar_fill.BorderSizePixel = 0
+	bar_fill.ZIndex = bar_track.ZIndex + 1
+	bar_fill.Parent = bar_track
+	apply_squircle(bar_fill, 999)
+
 	services.tween_service:Create(text_label, tween_info, {
-		BackgroundTransparency = 0.1,
+		BackgroundTransparency = 0.05,
 		TextTransparency = 0,
 		Position = text_label.Position + UDim2.new(0.1, 0, 0, 0)
+	}):Play()
+
+	services.tween_service:Create(bar_fill, TweenInfo.new(NOTIF_DURATION, Enum.EasingStyle.Linear), {
+		Size = UDim2.new(0, 0, 1, 0)
 	}):Play()
 
 	local notification_data = {
@@ -892,7 +1242,7 @@ local function notify(log, text, log_type)
 
 	table.insert(stuff.active_notifications, notification_data)
 
-	task.delay(4, function()
+	task.delay(NOTIF_DURATION, function()
 		remove_notification(notification_data)
 	end)
 end
@@ -1768,15 +2118,31 @@ function cmd_library.get_variable_storage(name)
 end
 
 function cmd_library.find_similar(name)
-	local similar = {}
+	local prefix_matches = {}
+	local contains_matches = {}
 	local search = name:lower()
 
 	for cmd_name in cmd_library._command_map do
 		if cmd_name:sub(1, #search) == search then
-			table.insert(similar, cmd_name)
+			table.insert(prefix_matches, cmd_name)
 		elseif cmd_name:find(search, 1, true) then
-			table.insert(similar, cmd_name)
+			table.insert(contains_matches, cmd_name)
 		end
+	end
+
+	table.sort(prefix_matches, function(a, b) return #a < #b end)
+	table.sort(contains_matches, function(a, b) return #a < #b end)
+
+	local similar = {}
+	local MAX_SIMILAR = 5
+
+	for _, v in prefix_matches do
+		if #similar >= MAX_SIMILAR then break end
+		table.insert(similar, v)
+	end
+	for _, v in contains_matches do
+		if #similar >= MAX_SIMILAR then break end
+		table.insert(similar, v)
 	end
 
 	return similar
@@ -2517,6 +2883,15 @@ cmd_library.add({'unloopwalkspeed', 'unloopws'}, 'disables loopwalkspeed', {}, f
 	end
 end)
 
+cmd_library.add({'bypassfly', 'flybypass'}, 'enable flight with anti-detection bypass', {
+	{'speed', 'number'},
+	{'enable_toggling', 'boolean', 'hidden'}
+}, function(vstorage, speed, et)
+	-- cmd_library.execute always runs str_to_type on its args, so pass strings here,
+	-- not native booleans/numbers, or the boolean converter will error on a non-string.
+	cmd_library.execute('fly', tostring(speed or 1), 'true', et and 'true' or nil)
+end)
+
 cmd_library.add({'fly', 'cfly', 'cframefly'}, 'enable flight', {
 	{'speed', 'number'},
 	{'bypass_mode', 'boolean'},
@@ -2526,7 +2901,7 @@ cmd_library.add({'fly', 'cfly', 'cframefly'}, 'enable flight', {
 		speed = 1
 	end
 
-	if vstorage.enabled and vstorage.speed == speed then
+	if vstorage.enabled and vstorage.speed == speed and vstorage.bypass == bypass then
 		if et then
 			cmd_library.execute('unfly')
 			return
@@ -2537,7 +2912,20 @@ cmd_library.add({'fly', 'cfly', 'cframefly'}, 'enable flight', {
 
 	vstorage.enabled = true
 	vstorage.speed = speed or 1
-	notify('fly', `enabled flight{vstorage.speed ~= 1 and ` with speed {vstorage.speed}` or ''}`, 1)
+	vstorage.bypass = bypass
+	notify('fly', `enabled flight{vstorage.speed ~= 1 and ` with speed {vstorage.speed}` or ''}{bypass and ' (bypass)' or ''}`, 1)
+
+	if stuff.is_mobile then
+		if vstorage.toggle_widget then
+			pcall(vstorage.toggle_widget.destroy)
+			vstorage.toggle_widget = nil
+		end
+		vstorage.toggle_widget = create_mobile_toggle_gui(bypass and 'bypass fly' or 'fly', true, function(new_state)
+			if not new_state then
+				cmd_library.execute('unfly')
+			end
+		end)
+	end
 
 	local flight_part = Instance.new('Part', workspace)
 	vstorage.part = flight_part
@@ -2598,12 +2986,18 @@ cmd_library.add({'unfly', 'uncframefly', 'uncfly'}, 'disable flight', {}, functi
 
 	if vstorage.enabled then
 		vstorage.enabled = false
+		vstorage.bypass = nil
 		maid.remove('flight')
 		hook_lib.destroy_hook('fly_bypass')
 
 		if vstorage.part then
 			pcall(stuff.destroy, vstorage.part)
 			vstorage.part = nil
+		end
+
+		if vstorage.toggle_widget then
+			pcall(vstorage.toggle_widget.destroy)
+			vstorage.toggle_widget = nil
 		end
 
 		notify('fly', 'disabled flight', 1)
@@ -5083,7 +5477,7 @@ cmd_library.add({'help', 'cmds', 'commands'}, 'shows you this menu', {}, functio
 		end
 	end
 
-	stuff.ui_cmdlist.Enabled = true
+	stuff.show_cmdlist()
 end)
 
 cmd_library.add({'saveposition', 'savepos'}, 'save a position to load with loadpos', {}, function(vstorage)
@@ -8863,35 +9257,6 @@ cmd_library.add({'size', 'scale'}, 'changes character size', {
 	notify('size', `size set to {size}`, 1)
 
 	stuff.owner_char:ScaleTo(size)
-end)
-
-cmd_library.add({'invisible', 'invis'}, 'makes your character invisible for others', {{'enable_toggling', 'boolean', 'hidden'}}, function(vstorage, et)
-	if et and vstorage.enabled then
-		cmd_library.execute('visible')
-		return
-	end
-
-	if vstorage.enabled then
-		return notify('invisible', 'you already are invisible', 2)
-	end
-
-	vstorage.enabled = true
-	notify('invisible', 'you are now invisible', 1)
-
-	task.spawn(function()
-		local hrp = stuff.rawrbxget(stuff.owner_char, 'HumanoidRootPart')
-		local position = stuff.rawrbxget(hrp, 'Position')
-		task.wait(.1)
-		stuff.owner_char:MoveTo(position + Vector3.new(0, 1000000, 0))
-		task.wait(.1)
-		local hrpc = stuff.clone(hrp)
-		task.wait(.1)
-		pcall(stuff.destroy, hrp)
-		stuff.rawrbxset(hrpc, 'Parent', stuff.owner_char)
-		task.delay(.2, function()
-			stuff.owner_char:MoveTo(position)
-		end)
-	end)
 end)
 
 cmd_library.add({'visible', 'uninvis', 'uninvisible'}, 'makes your character visible', {}, function(vstorage)
@@ -16354,56 +16719,6 @@ cmd_library.add({'invisv2'}, '(good for mm2 murdurr)', {}, function()
 	end
 end)
 
-cmd_library.add({'unsuspendvc'}, '(better)', {}, function()
-	notify('wait', 'loading gui', 1)
-	local success, err = pcall(function()
-		loadstring(game:HttpGet('https://za1k.lol/vcbypass.lua'))()
-	end)
-	if not success then
-		notify('failed', 'failed to load: ' .. tostring(err), 2)
-	end
-end)
-
-cmd_library.add({'reach2'}, '(better)', {}, function()
-	notify('wait', 'loading gui', 1)
-	local success, err = pcall(function()
-		loadstring(game:HttpGet('https://pastebin.com/raw/JEtx2sxZ'))()
-	end)
-	if not success then
-		notify('failed', 'failed to load: ' .. tostring(err), 2)
-	end
-end)
-
-cmd_library.add({'touchfling'}, '(better and awesome)', {}, function()
-	notify('wait', 'loading gui', 1)
-	local success, err = pcall(function()
-		loadstring(game:HttpGet('https://pastebin.com/raw/tEmpVyCS'))()
-	end)
-	if not success then
-		notify('failed', 'failed to load: ' .. tostring(err), 2)
-	end
-end)
-
-cmd_library.add({'mobilefly'}, '(has toggle)', {}, function()
-	notify('wait', 'loading gui', 1)
-	local success, err = pcall(function()
-		loadstring(game:HttpGet('https://raw.githubusercontent.com/NormalZyoherion/Roblox-Scripts-universal/refs/heads/main/mgly.lua.txt'))()
-	end)
-	if not success then
-		notify('failed', 'failed to load: ' .. tostring(err), 2)
-	end
-end)
-
-cmd_library.add({'mobilefly2'}, '(has toggle but ass)', {}, function()
-	notify('wait', 'loading gui', 1)
-	local success, err = pcall(function()
-		loadstring(game:HttpGet('https://raw.githubusercontent.com/NormalZyoherion/Roblox-Scripts-universal/refs/heads/main/flygui.lua.txt'))()
-	end)
-	if not success then
-		notify('failed', 'failed to load: ' .. tostring(err), 2)
-	end
-end)
-
 cmd_library.add({'nocliptoggle'}, '(has toggle)', {}, function()
 	notify('wait', 'loading gui', 1)
 	local success, err = pcall(function()
@@ -16451,6 +16766,11 @@ local ui_cmdbox_main_container = ui_cmdbox.main_container
 local ui_cmdbox_inputbox = ui_cmdbox_main_container.inputbox
 local ui_cmdbox_button = ui_cmdbox_main_container.button
 
+-- the trigger button was nested inside main_container, so hiding main_container
+-- (which we do when the cmdbox is closed) hid the button too, regardless of its
+-- own Visible property. Reparent it to sit alongside main_container instead.
+ui_cmdbox_button.Parent = ui_cmdbox
+
 local ui_cmdlist_main_container = ui_cmdlist.main_container
 local ui_cmdlist_search = ui_cmdlist_main_container.search
 local ui_cmdlist_close = ui_cmdlist_main_container.close
@@ -16468,101 +16788,287 @@ local tween_ui = function(element, duration, properties, out)
 		out and Enum.EasingDirection.Out or Enum.EasingDirection.In), properties):Play()
 end
 
+-- squircle + gradient styling helpers
+-- (styling helpers moved above notify(), near top of file)
+local function get_or_create_scale(element)
+	local scale = element:FindFirstChildOfClass('UIScale')
+	if not scale then
+		scale = Instance.new('UIScale')
+		scale.Parent = element
+	end
+	return scale
+end
+
+local function tween_scale_fade(element, duration, showing, extra_props)
+	local scale = get_or_create_scale(element)
+	local goal_scale = showing and 1 or 0.85
+
+	services.tween_service:Create(scale, TweenInfo.new(duration, Enum.EasingStyle.Back,
+		showing and Enum.EasingDirection.Out or Enum.EasingDirection.In), {Scale = goal_scale}):Play()
+
+	local props = {BackgroundTransparency = showing and (extra_props and extra_props.bg_transparency or 0) or 1}
+	if extra_props then
+		for k, v in extra_props do
+			if k ~= 'bg_transparency' then
+				props[k] = v
+			end
+		end
+	end
+
+	services.tween_service:Create(element, TweenInfo.new(duration, Enum.EasingStyle.Sine,
+		showing and Enum.EasingDirection.Out or Enum.EasingDirection.In), props):Play()
+end
+
+-- pop-up style scale+fade: starts from a much smaller scale (0.3) so the element
+-- visibly pops out from its anchor point (e.g. the trigger button), rather than
+-- just gently shrinking like tween_scale_fade.
+local function tween_popup(element, duration, showing)
+	local scale = get_or_create_scale(element)
+	local goal_scale = showing and 1 or 0.3
+
+	services.tween_service:Create(scale, TweenInfo.new(duration, Enum.EasingStyle.Back,
+		showing and Enum.EasingDirection.Out or Enum.EasingDirection.In), {Scale = goal_scale}):Play()
+
+	services.tween_service:Create(element, TweenInfo.new(duration, Enum.EasingStyle.Sine,
+		showing and Enum.EasingDirection.Out or Enum.EasingDirection.In), {
+		BackgroundTransparency = showing and 0 or 1
+	}):Play()
+end
+
+-- apply squircle + gradient theme across cmdbox, button and cmdlist
+apply_squircle(ui_cmdbox_main_container, 24)
+apply_gradient(ui_cmdbox_main_container, GRADIENT_ROTATION, NumberSequence.new({
+	NumberSequenceKeypoint.new(0, 0.15),
+	NumberSequenceKeypoint.new(1, 0.35),
+}))
+apply_smooth_stroke(ui_cmdbox_main_container, Color3.fromRGB(255, 255, 255), 1, 0.75)
+
+apply_squircle(ui_cmdbox_button, 999) -- fully round pill/squircle button
+apply_gradient(ui_cmdbox_button, GRADIENT_ROTATION)
+apply_smooth_stroke(ui_cmdbox_button, Color3.fromRGB(255, 255, 255), 1, 0.6)
+
+apply_squircle(ui_cmdbox_inputbox, 16)
+
+apply_squircle(ui_cmdlist_main_container, 24)
+apply_gradient(ui_cmdlist_main_container, GRADIENT_ROTATION, NumberSequence.new({
+	NumberSequenceKeypoint.new(0, 0.15),
+	NumberSequenceKeypoint.new(1, 0.35),
+}))
+apply_smooth_stroke(ui_cmdlist_main_container, Color3.fromRGB(255, 255, 255), 1, 0.75)
+
+apply_squircle(ui_cmdlist_search, 16)
+apply_squircle(ui_cmdlist_close, 999)
+apply_squircle(ui_cmdlist_template, 14)
+apply_smooth_stroke(ui_cmdlist_template, Color3.fromRGB(255, 255, 255), 1, 0.85)
+
+local function show_cmdlist()
+	ui_cmdlist.Enabled = true
+	ui_cmdlist_main_container.Position = ui_cmdlist_main_container.Position -- keep current anchor
+	tween_scale_fade(ui_cmdlist_main_container, 0.2, true)
+end
+
+local function hide_cmdlist()
+	tween_scale_fade(ui_cmdlist_main_container, 0.2, false)
+	task.delay(0.2, function()
+		ui_cmdlist.Enabled = false
+	end)
+end
+
+stuff.show_cmdlist = show_cmdlist
+stuff.hide_cmdlist = hide_cmdlist
+
 do
 	local open = false
+
+	-- small squircle trigger button, always visible, doesn't cover the screen
+	ui_cmdbox_button.Visible = true
+	ui_cmdbox_button.Size = UDim2.new(0, 52, 0, 52)
+	ui_cmdbox_button.AutoButtonColor = false
+	ui_cmdbox_button.Text = '>_'
+	ui_cmdbox_button.Font = Enum.Font.GothamBold
+	ui_cmdbox_button.TextSize = 16
+	ui_cmdbox_button.TextColor3 = Color3.fromRGB(255, 255, 255)
+	ui_cmdbox_button.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
+	ui_cmdbox_button.Active = true
+
+	-- keep whatever position the template already had; only fall back to a sane
+	-- corner position if it's unset (0,0,0,0)
+	if ui_cmdbox_button.Position == UDim2.new(0, 0, 0, 0) then
+		ui_cmdbox_button.Position = UDim2.new(1, -68, 1, -84)
+	end
+
+	apply_squircle(ui_cmdbox_button, 999)
+	apply_gradient(ui_cmdbox_button, GRADIENT_ROTATION)
+	apply_smooth_stroke(ui_cmdbox_button, Color3.fromRGB(255, 255, 255), 1, 0.6)
+
+	-- the cmdbox itself: hidden entirely until the button is pressed, and pops up
+	-- anchored near the button (like a typical admin script command bar), instead
+	-- of always occupying screen space.
+	ui_cmdbox_main_container.Visible = false
+	ui_cmdbox_main_container.BackgroundTransparency = 1
+	ui_cmdbox_main_container.AnchorPoint = Vector2.new(0.5, 0.5)
+	get_or_create_scale(ui_cmdbox_main_container).Scale = 0.3
+
+	local function get_popup_position()
+		local btn_pos = ui_cmdbox_button.AbsolutePosition
+		local btn_size = ui_cmdbox_button.AbsoluteSize
+		local box_size = ui_cmdbox_main_container.AbsoluteSize
+		local vp = workspace.CurrentCamera.ViewportSize
+
+		-- container is center-anchored, so compute the center point directly
+		local center_x = btn_pos.X + btn_size.X / 2
+		local center_y = btn_pos.Y - box_size.Y / 2 - 12 -- default: just above the button
+
+		if center_y - box_size.Y / 2 < 8 then
+			-- would go off the top of the screen, place below the button instead
+			center_y = btn_pos.Y + btn_size.Y + box_size.Y / 2 + 12
+		end
+
+		center_x = math.clamp(center_x, box_size.X / 2 + 8, vp.X - box_size.X / 2 - 8)
+
+		return UDim2.fromOffset(center_x, center_y)
+	end
+
 	local pos_open = ui_cmdbox_main_container.Position
-	local pos_closed = UDim2.new(0.5, 0, 0, -35)
 
-	ui_cmdbox_button.Visible = stuff.is_mobile
+	local function open_cmdbox()
+		pos_open = get_popup_position()
+		ui_cmdbox_main_container.Position = pos_open
+		ui_cmdbox_main_container.Visible = true
+		tween_popup(ui_cmdbox_main_container, 0.22, true)
+		open = true
+		ui_cmdbox_inputbox:CaptureFocus()
+	end
 
-	tween_ui(ui_cmdbox_main_container, 0.25, {Position = pos_closed}, false)
+	local function close_cmdbox()
+		tween_popup(ui_cmdbox_main_container, 0.15, false)
+		open = false
+		task.delay(0.15, function()
+			if not open then
+				ui_cmdbox_main_container.Visible = false
+			end
+		end)
+	end
 
-	-- drag logic (PC + mobile)
+	-- drag logic (PC + mobile) — dragging the cmdbox itself while it's open
 	do
+		-- Frame/GuiObject only fires InputBegan/InputEnded if Active is true
+		ui_cmdbox_main_container.Active = true
+
 		local dragging = false
-		local drag_start_input = nil
-		local drag_start_pos = nil
+		local drag_input = nil
+		local drag_start = nil
+		local start_pos = nil
 
-		local function get_container_abs_pos()
-			return ui_cmdbox_main_container.AbsolutePosition
+		local function update_drag(input)
+			local delta = input.Position - drag_start
+			local new_pos = UDim2.new(
+				start_pos.X.Scale, start_pos.X.Offset + delta.X,
+				start_pos.Y.Scale, start_pos.Y.Offset + delta.Y
+			)
+			ui_cmdbox_main_container.Position = new_pos
+			pos_open = new_pos
 		end
 
-		local function apply_drag(current_input_pos)
-			if not drag_start_input or not drag_start_pos then return end
-			local delta = current_input_pos - drag_start_input
-			local vp = workspace.CurrentCamera.ViewportSize
-			local abs_size = ui_cmdbox_main_container.AbsoluteSize
-			local new_x = math.clamp(drag_start_pos.X + delta.X, 0, vp.X - abs_size.X)
-			local new_y = math.clamp(drag_start_pos.Y + delta.Y, 0, vp.Y - abs_size.Y)
-			ui_cmdbox_main_container.Position = UDim2.fromOffset(new_x, new_y)
-			pos_open = ui_cmdbox_main_container.Position
-		end
+		maid.add('cmdbox_drag_began', ui_cmdbox_main_container.InputBegan, function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1
+				or input.UserInputType == Enum.UserInputType.Touch then
 
-		-- PC drag
-		maid.add('cmdbox_drag_begin', ui_cmdbox_main_container.InputBegan, function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 then
-				if input.Target == ui_cmdbox_inputbox then return end
 				dragging = true
-				drag_start_input = Vector2.new(input.Position.X, input.Position.Y)
-				drag_start_pos = get_container_abs_pos()
+				drag_start = input.Position
+				start_pos = ui_cmdbox_main_container.Position
+
+				input.Changed:Connect(function()
+					if input.UserInputState == Enum.UserInputState.End then
+						if drag_input == input then
+							dragging = false
+						end
+					end
+				end)
 			end
 		end, true)
 
-		maid.add('cmdbox_drag_move_pc', services.user_input_service.InputChanged, function(input)
-			if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-				apply_drag(Vector2.new(input.Position.X, input.Position.Y))
+		maid.add('cmdbox_drag_changed', ui_cmdbox_main_container.InputChanged, function(input)
+			if input.UserInputType == Enum.UserInputType.MouseMovement
+				or input.UserInputType == Enum.UserInputType.Touch then
+				drag_input = input
 			end
 		end, true)
 
-		maid.add('cmdbox_drag_end_pc', services.user_input_service.InputEnded, function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 then
-				dragging = false
-				drag_start_input = nil
-				drag_start_pos = nil
+		maid.add('cmdbox_drag_move', services.user_input_service.InputChanged, function(input)
+			if dragging and input == drag_input then
+				update_drag(input)
 			end
-		end, true)
-
-		-- Mobile drag (touch)
-		maid.add('cmdbox_drag_begin_touch', ui_cmdbox_main_container.InputBegan, function(input)
-			if input.UserInputType == Enum.UserInputType.Touch then
-				if input.Target == ui_cmdbox_inputbox then return end
-				dragging = true
-				drag_start_input = Vector2.new(input.Position.X, input.Position.Y)
-				drag_start_pos = get_container_abs_pos()
-			end
-		end, true)
-
-		maid.add('cmdbox_drag_move_touch', services.user_input_service.TouchMoved, function(touch)
-			if dragging then
-				apply_drag(Vector2.new(touch.Position.X, touch.Position.Y))
-			end
-		end, true)
-
-		maid.add('cmdbox_drag_end_touch', services.user_input_service.TouchEnded, function()
-			dragging = false
-			drag_start_input = nil
-			drag_start_pos = nil
 		end, true)
 	end
 
-	maid.add('open_cmdbox_button', ui_cmdbox_button.MouseButton1Click, function()
-		open = not open
+	-- draggable trigger button too, independent of the cmdbox's own drag
+	do
+		local dragging = false
+		local drag_input = nil
+		local drag_start = nil
+		local start_pos = nil
+		local button_moved = false
 
-		tween_ui(ui_cmdbox_main_container, 0.15, {Position = open and pos_open or pos_closed}, open)
-		ui_cmdbox_button.Text = open and 'close' or 'open'
+		maid.add('cmdbox_button_drag_began', ui_cmdbox_button.InputBegan, function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1
+				or input.UserInputType == Enum.UserInputType.Touch then
+
+				dragging = true
+				button_moved = false
+				drag_start = input.Position
+				start_pos = ui_cmdbox_button.Position
+
+				input.Changed:Connect(function()
+					if input.UserInputState == Enum.UserInputState.End then
+						if drag_input == input then
+							dragging = false
+						end
+					end
+				end)
+			end
+		end, true)
+
+		maid.add('cmdbox_button_drag_changed', ui_cmdbox_button.InputChanged, function(input)
+			if input.UserInputType == Enum.UserInputType.MouseMovement
+				or input.UserInputType == Enum.UserInputType.Touch then
+				drag_input = input
+			end
+		end, true)
+
+		maid.add('cmdbox_button_drag_move', services.user_input_service.InputChanged, function(input)
+			if dragging and input == drag_input then
+				local delta = input.Position - drag_start
+				if delta.Magnitude > 4 then button_moved = true end
+
+				ui_cmdbox_button.Position = UDim2.new(
+					start_pos.X.Scale, start_pos.X.Offset + delta.X,
+					start_pos.Y.Scale, start_pos.Y.Offset + delta.Y
+				)
+			end
+		end, true)
+
+		stuff.cmdbox_button_was_dragged = function()
+			return button_moved
+		end
+	end
+
+	maid.add('open_cmdbox_button', ui_cmdbox_button.MouseButton1Click, function()
+		if stuff.cmdbox_button_was_dragged and stuff.cmdbox_button_was_dragged() then
+			return
+		end
 
 		if open then
-			ui_cmdbox_inputbox:CaptureFocus()
+			close_cmdbox()
+		else
+			open_cmdbox()
 		end
 	end, true)
 
 	stuff.update_keybind = function()
 		maid.add('open_cmdbox_key', services.user_input_service.InputBegan, function(input, game_processed)
 			if input.KeyCode == stuff.open_keybind and not game_processed and not open then
-				tween_ui(ui_cmdbox_main_container, 0.15, {Position = pos_open}, true)
-
-				open = true
-				ui_cmdbox_inputbox:CaptureFocus()
+				open_cmdbox()
 
 				task.delay(.05, function()
 					if ui_cmdbox_inputbox.Text ~= '' then
@@ -16577,9 +17083,141 @@ do
 	end
 	stuff.update_keybind()
 
+	-- command suggestion dropdown
+	do
+		local suggestion_frame = Instance.new('Frame')
+		suggestion_frame.Name = 'suggestions'
+		suggestion_frame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+		suggestion_frame.BackgroundTransparency = 1
+		suggestion_frame.BorderSizePixel = 0
+		suggestion_frame.Size = UDim2.new(1, 0, 0, 0)
+		suggestion_frame.AutomaticSize = Enum.AutomaticSize.Y
+		suggestion_frame.Position = UDim2.new(0, 0, 1, 6)
+		suggestion_frame.ClipsDescendants = true
+		suggestion_frame.Visible = false
+		suggestion_frame.ZIndex = 50
+		suggestion_frame.Parent = ui_cmdbox_main_container
+
+		apply_squircle(suggestion_frame, 18)
+		apply_gradient(suggestion_frame, GRADIENT_ROTATION, NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.15),
+			NumberSequenceKeypoint.new(1, 0.35),
+		}))
+		apply_smooth_stroke(suggestion_frame, Color3.fromRGB(255, 255, 255), 1, 0.75)
+
+		local layout = Instance.new('UIListLayout')
+		layout.SortOrder = Enum.SortOrder.LayoutOrder
+		layout.Padding = UDim.new(0, 2)
+		layout.Parent = suggestion_frame
+
+		local padding = Instance.new('UIPadding')
+		padding.PaddingTop = UDim.new(0, 6)
+		padding.PaddingBottom = UDim.new(0, 6)
+		padding.PaddingLeft = UDim.new(0, 6)
+		padding.PaddingRight = UDim.new(0, 6)
+		padding.Parent = suggestion_frame
+
+		local MAX_SUGGESTIONS = 5
+		local suggestion_buttons = {}
+
+		local function clear_suggestions()
+			for _, btn in suggestion_buttons do
+				btn:Destroy()
+			end
+			suggestion_buttons = {}
+		end
+
+		local function hide_suggestions()
+			tween_ui(suggestion_frame, 0.12, {BackgroundTransparency = 1}, false)
+			task.delay(0.12, function()
+				if suggestion_frame.Position == UDim2.new(0, 0, 1, 6) then
+					suggestion_frame.Visible = false
+				end
+			end)
+		end
+
+		local function pick_suggestion(cmd_name)
+			local current = ui_cmdbox_inputbox.Text
+			local first_space = current:find('%s')
+			local rest = first_space and current:sub(first_space) or ''
+			ui_cmdbox_inputbox.Text = cmd_name .. rest
+			ui_cmdbox_inputbox.CursorPosition = #ui_cmdbox_inputbox.Text + 1
+			ui_cmdbox_inputbox:CaptureFocus()
+		end
+
+		local function update_suggestions()
+			clear_suggestions()
+
+			local text = ui_cmdbox_inputbox.Text
+			local first_word = text:match('^%S+') or ''
+			first_word = first_word:lower()
+
+			if first_word == '' then
+				hide_suggestions()
+				return
+			end
+
+			local matches = {}
+			for _, cmd in cmd_library._commands do
+				for _, name in cmd.names do
+					local lname = name:lower()
+					if lname:sub(1, #first_word) == first_word then
+						table.insert(matches, {name = cmd.names[1], alias = name, description = cmd.description})
+						break
+					end
+				end
+				if #matches >= MAX_SUGGESTIONS then break end
+			end
+
+			if #matches == 0 then
+				hide_suggestions()
+				return
+			end
+
+			for i, match in matches do
+				local btn = Instance.new('TextButton')
+				btn.Name = 'suggestion_' .. i
+				btn.Size = UDim2.new(1, 0, 0, 32)
+				btn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+				btn.BackgroundTransparency = 0.92
+				btn.BorderSizePixel = 0
+				btn.Font = Enum.Font.GothamMedium
+				btn.TextSize = 14
+				btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+				btn.TextXAlignment = Enum.TextXAlignment.Left
+				btn.Text = `  {match.alias}{match.description and match.description ~= '' and '  —  ' .. match.description or ''}`
+				btn.TextTruncate = Enum.TextTruncate.AtEnd
+				btn.ZIndex = 51
+				btn.LayoutOrder = i
+				btn.Parent = suggestion_frame
+
+				apply_squircle(btn, 12)
+
+				btn.MouseButton1Click:Connect(function()
+					pick_suggestion(match.name)
+					clear_suggestions()
+					hide_suggestions()
+				end)
+
+				table.insert(suggestion_buttons, btn)
+			end
+
+			suggestion_frame.Visible = true
+			tween_ui(suggestion_frame, 0.12, {BackgroundTransparency = 0}, true)
+		end
+
+		maid.add('cmdbox_text_changed', ui_cmdbox_inputbox:GetPropertyChangedSignal('Text'), function()
+			update_suggestions()
+		end, true)
+
+		maid.add('cmdbox_suggestions_reset', ui_cmdbox_inputbox.FocusLost, function()
+			clear_suggestions()
+			hide_suggestions()
+		end, true)
+	end
+
 	maid.add('cmdbox_focuslost', ui_cmdbox_inputbox.FocusLost, function(enter)
-		tween_ui(ui_cmdbox_main_container, 0.15, {Position = pos_closed}, false)
-		open = false
+		close_cmdbox()
 
 		if enter then
 			local text = ui_cmdbox_inputbox.Text
@@ -16591,7 +17229,6 @@ do
 		end
 
 		ui_cmdbox_inputbox.Text = ''
-		ui_cmdbox_button.Text = 'open'
 	end, true)
 
 	pcall(protect_gui, ui_cmdbox)
@@ -16599,7 +17236,7 @@ end
 
 do
 	maid.add('cmdlist_close', ui_cmdlist_close.MouseButton1Click, function()
-		ui_cmdlist.Enabled = false
+		hide_cmdlist()
 	end, true)
 
 	maid.add('cmdlist_search', ui_cmdlist_search:GetPropertyChangedSignal('Text'), function()
@@ -16643,6 +17280,8 @@ do
 	end, true)
 
 	ui_cmdlist.Enabled = false
+	get_or_create_scale(ui_cmdlist_main_container).Scale = 0.85
+	ui_cmdlist_main_container.BackgroundTransparency = 1
 	pcall(protect_gui, ui_cmdlist)
 	stuff.ui_cmdlist = ui_cmdlist
 	stuff.ui_cmdlist_template = ui_cmdlist_template
